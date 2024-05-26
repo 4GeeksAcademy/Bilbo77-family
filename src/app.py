@@ -12,12 +12,10 @@ from datastructures import FamilyStructure
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 CORS(app)
-
-
 jackson_family = FamilyStructure("Jackson")  # create the jackson family object
 
-# Handle/serialize errors like a JSON object
-@app.errorhandler(APIException)
+
+@app.errorhandler(APIException)  # Handle/serialize errors like a JSON object
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
@@ -26,15 +24,43 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/members', methods=['GET'])
+@app.route('/members', methods=['GET', 'POST'])
 def handle_hello():
     response_body = {}
-    # this is how you can use the Family datastructure by calling its methods
-    members = jackson_family.get_all_members()
-    response_body['hello'] = "world"
-    response_body['family'] = members
+    if request.method == 'GET':
+        # this is how you can use the Family datastructure by calling its methods
+        members = jackson_family.get_all_members()
+        response_body['hello'] = "world"
+        response_body['family'] = members
+        return jsonify(response_body), 200
+    if request.method == 'POST':
+        data = request.json
+        result = jackson_family.add_member(data)
+        response_body['message'] = 'el endpoint funciona'
+        response_body['results'] = data
+        return jsonify(response_body), 200
 
-    return jsonify(response_body), 200
+
+@app.route('/members/<int:id>', methods=['GET', 'DELETE'])
+def handle_members(id):
+    response_body = {}
+    if request.method == 'GET':
+        result = jackson_family.get_member(id)
+        if result:
+            response_body['message'] = 'Usuario encontrado'
+            response_body['results'] = result
+            return jsonify(response_body), 200
+        response_body['message'] = 'Usuario no existe'
+        response_body['results'] = {}
+        return jsonify(response_body), 404
+    if request.method == 'DELETE':
+        result = jackson_family.delete_member(id)
+        if result:
+            response_body['message'] = f'Usuario {id} eliminado'
+        else:
+            response_body['message'] = f'Usuario {id} no encontrado'
+        response_body['results'] = result
+        return jsonify(response_body), 200
 
 
 if __name__ == '__main__':
